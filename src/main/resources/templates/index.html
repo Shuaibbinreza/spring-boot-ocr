@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PDF OCR Viewer</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }
+        .container { max-width: 1400px; margin: 0 auto; }
+        h1 { margin-bottom: 20px; color: #333; }
+        .card { background: white; border-radius: 8px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+        .upload-section { display: flex; gap: 10px; align-items: center; }
+        input[type="file"] { padding: 8px; border: 1px solid #ddd; border-radius: 4px; }
+        button { background: #4CAF50; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+        button:hover { background: #45a049; }
+        .pdf-list { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 20px; }
+        .pdf-item { padding: 10px 15px; border: 1px solid #ddd; border-radius: 4px; cursor: pointer; transition: all 0.2s; }
+        .pdf-item:hover { background: #f5f5f5; }
+        .pdf-item.selected { background: #4CAF50; color: white; border-color: #4CAF50; }
+        .viewer { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; min-height: 600px; }
+        .pdf-viewer { background: #e0e0e0; border-radius: 4px; display: flex; align-items: center; justify-content: center; min-height: 600px; overflow: hidden; }
+        .pdf-viewer iframe { width: 100%; height: 600px; border: none; }
+        .pdf-viewer .placeholder { color: #666; }
+        .text-output { white-space: pre-wrap; overflow-y: auto; padding: 15px; background: #fafafa; border-radius: 4px; font-size: 14px; line-height: 1.6; min-height: 600px; max-height: 600px; border: 1px solid #ddd; }
+        .panel-title { margin-bottom: 10px; font-weight: 500; color: #333; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>PDF OCR Viewer</h1>
+        
+        <div class="card">
+            <h3>Upload PDF</h3>
+            <div class="upload-section">
+                <input type="file" id="pdfInput" accept=".pdf">
+                <button onclick="uploadPDF()">Upload</button>
+            </div>
+        </div>
+
+        <div class="card">
+            <h3>Select PDF</h3>
+            <div class="pdf-list" id="pdfList"></div>
+        </div>
+
+        <div class="viewer">
+            <div>
+                <div class="panel-title">PDF Preview</div>
+                <div class="pdf-viewer" id="pdfViewer">
+                    <span class="placeholder">Select a PDF to view</span>
+                </div>
+            </div>
+            <div>
+                <div class="panel-title">Extracted Text</div>
+                <div class="text-output" id="textOutput">Select a PDF to view extracted text</div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        let selectedPdfId = null;
+        let pdfs = [];
+
+        async function uploadPDF() {
+            const input = document.getElementById('pdfInput');
+            const file = input.files[0];
+            if (!file) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const response = await fetch('/api/pdfs', {
+                method: 'POST',
+                body: formData
+            });
+
+            if (response.ok) {
+                input.value = '';
+                loadPDFs();
+            }
+        }
+
+        async function loadPDFs() {
+            const response = await fetch('/api/pdfs');
+            pdfs = await response.json();
+            renderPDFList();
+        }
+
+        function renderPDFList() {
+            const list = document.getElementById('pdfList');
+            if (pdfs.length === 0) {
+                list.innerHTML = '<p style="color:#666;">No PDFs uploaded yet</p>';
+                return;
+            }
+            list.innerHTML = pdfs.map(pdf => `
+                <div class="pdf-item ${selectedPdfId === pdf.id ? 'selected' : ''}" onclick="selectPDF(${pdf.id})">
+                    ${pdf.name}
+                </div>
+            `).join('');
+        }
+
+        async function selectPDF(id) {
+            selectedPdfId = id;
+            renderPDFList();
+
+            const pdf = pdfs.find(p => p.id === id);
+            
+            document.getElementById('pdfViewer').innerHTML = `<iframe src="/api/pdfs/${id}/file"></iframe>`;
+            document.getElementById('textOutput').textContent = pdf.content;
+        }
+
+        loadPDFs();
+    </script>
+</body>
+</html>
