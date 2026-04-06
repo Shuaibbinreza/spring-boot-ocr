@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PDF OCR Viewer</title>
+    <link href="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.snow.css" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f5; padding: 20px; }
@@ -22,7 +23,20 @@
         .pdf-viewer { background: #e0e0e0; border-radius: 4px; display: flex; align-items: center; justify-content: center; min-height: 600px; overflow: hidden; }
         .pdf-viewer iframe { width: 100%; height: 600px; border: none; }
         .pdf-viewer .placeholder { color: #666; }
-        .text-output { white-space: pre-wrap; overflow-y: auto; padding: 15px; background: #fafafa; border-radius: 4px; font-size: 14px; line-height: 1.6; min-height: 600px; max-height: 600px; border: 1px solid #ddd; }
+        .text-output { background: #fafafa; border-radius: 4px; border: 1px solid #ddd; overflow: hidden; }
+        #editorToolbar { border: none; border-bottom: 1px solid #ddd; background: white; }
+        #textOutput { height: 557px; }
+        #textOutput .ql-container {
+            height: calc(100% - 42px);
+            border: none;
+            font-size: 14px;
+            line-height: 1.6;
+        }
+        #textOutput .ql-editor {
+            height: 100%;
+            overflow-y: auto;
+            white-space: pre-wrap;
+        }
         .panel-title { margin-bottom: 10px; font-weight: 500; color: #333; }
     </style>
 </head>
@@ -52,14 +66,38 @@
             </div>
             <div>
                 <div class="panel-title">Extracted Text</div>
-                <div class="text-output" id="textOutput">Select a PDF to view extracted text</div>
+                <div class="text-output">
+                    <div id="editorToolbar">
+                        <span class="ql-formats">
+                            <button class="ql-bold"></button>
+                            <button class="ql-italic"></button>
+                            <button class="ql-underline"></button>
+                        </span>
+                        <span class="ql-formats">
+                            <button class="ql-list" value="ordered"></button>
+                            <button class="ql-list" value="bullet"></button>
+                        </span>
+                        <span class="ql-formats">
+                            <button class="ql-clean"></button>
+                        </span>
+                    </div>
+                    <div id="textOutput"></div>
+                </div>
             </div>
         </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/quill@1.3.7/dist/quill.min.js"></script>
     <script>
         let selectedPdfId = null;
         let pdfs = [];
+        const quill = new Quill('#textOutput', {
+            theme: 'snow',
+            modules: {
+                toolbar: '#editorToolbar'
+            },
+            placeholder: 'Select a PDF to view extracted text'
+        });
 
         async function uploadPDF() {
             const input = document.getElementById('pdfInput');
@@ -106,7 +144,7 @@
             const pdf = pdfs.find(p => p.id === id);
             
             document.getElementById('pdfViewer').innerHTML = `<iframe src="/api/pdfs/${id}/file"></iframe>`;
-            document.getElementById('textOutput').textContent = pdf.content;
+            quill.setText(pdf?.content ?? '');
         }
 
         loadPDFs();
